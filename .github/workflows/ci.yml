@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format and fix
+        run: |
+          dart format lib test
+          dart fix --apply
+      - name: Analyze
+        run: flutter analyze
+
+  build-android:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --debug
+
+  build-windows:
+    runs-on: windows-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Windows
+        run: flutter build windows --debug
+
+  trigger-ios:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Trigger Codemagic iOS build
+        env:
+          CODEMAGIC_APP_ID: ${{ secrets.CODEMAGIC_APP_ID }}
+          CODEMAGIC_WORKFLOW_ID: ios-workflow
+          CODEMAGIC_TOKEN: ${{ secrets.CODEMAGIC_TOKEN }}
+        run: |
+          curl -H "x-auth-token: $CODEMAGIC_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"appId": "'$CODEMAGIC_APP_ID'", "workflowId": "'$CODEMAGIC_WORKFLOW_ID'", "branch": "'${GITHUB_REF##*/}'"}' \
+            https://api.codemagic.io/builds
