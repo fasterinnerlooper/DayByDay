@@ -1,0 +1,23 @@
+name: .NET CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore DayByDay.sln
+      - name: Check formatting
+        run: dotnet format --no-restore --verify-no-changes
+      - name: Build
+        run: dotnet build DayByDay.sln --no-restore --configuration Release
+      - name: Test
+        run: dotnet test DayByDay.sln --no-build --verbosity normal
